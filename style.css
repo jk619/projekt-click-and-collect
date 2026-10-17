@@ -1,13 +1,13 @@
 body {
-    background-color: #172033;
-    color: white;
+    background-color: #3f5484;
+    color: rgb(0, 0, 0);
     font-family: Arial, sans-serif;
     text-align: center;
     padding-top: 100px;
 }
 
 .spiel {
-    background-color: #263650;
+    background-color: #637797;
     padding: 40px;
     border-radius: 20px;
     max-width: 400px;
@@ -20,7 +20,7 @@ h2 {
 }
 
 button {
-    background-color: #3278f6;
+    background-color: #def325;
     color: white;
     font-size: 20px;
     padding: 15px 30px;
