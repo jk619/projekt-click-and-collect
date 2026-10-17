@@ -59,3 +59,22 @@ button:disabled {
 .shop h2 {
     font-size: 24px;
 }
+
+/* Bereich für automatische Münzmaschinen */
+.maschine {
+    background-color: #233550;
+    margin-top: 25px;
+    padding: 20px 10px;
+    border-radius: 15px;
+}
+
+/* Überschrift der Maschinen */
+.maschine h3 {
+    color: gold;
+    font-size: 22px;
+}
+
+/* Abstand zwischen den Maschinen-Informationen */
+.maschine p {
+    margin: 15px 0;
+}

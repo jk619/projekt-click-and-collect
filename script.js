@@ -1,23 +1,54 @@
 
-// Unser aktueller Spielstand
+// ==================================
+// 1. UNSERE SPIELWERTE
+// ==================================
+
 let punkte = 0;
 
-// So viele Münzen bekommen wir pro Klick
 let muenzenProKlick = 5;
 
-// Das erste Upgrade kostet 20 Münzen
 let upgradePreis = 20;
 
-// Elemente aus HTML finden
+// Neue Werte für die Maschinen
+let maschinenAnzahl = 0;
+
+let maschinenPreis = 50;
+
+
+// ==================================
+// 2. HTML-ELEMENTE FINDEN
+// ==================================
+
 const anzeige = document.getElementById("punkte");
+
 const sammelnButton = document.getElementById("sammeln");
+
 const upgradeButton = document.getElementById("upgrade");
 
-const klickWertAnzeige = document.getElementById("klick-wert");
-const preisAnzeige = document.getElementById("upgrade-preis");
+const klickWertAnzeige =
+    document.getElementById("klick-wert");
+
+const preisAnzeige =
+    document.getElementById("upgrade-preis");
+
+// Neue Elemente für die Maschinen
+const maschinenAnzeige =
+    document.getElementById("maschinen-anzahl");
+
+const produktionAnzeige =
+    document.getElementById("muenzen-pro-sekunde");
+
+const maschinenPreisAnzeige =
+    document.getElementById("maschinen-preis");
+
+const maschineKaufenButton =
+    document.getElementById("maschine-kaufen");
 
 
-// Diese Funktion aktualisiert unsere Anzeigen
+// ==================================
+// 3. ALLE ANZEIGEN AKTUALISIEREN
+// ==================================
+
 function anzeigeAktualisieren() {
 
     anzeige.textContent = punkte;
@@ -26,12 +57,25 @@ function anzeigeAktualisieren() {
 
     preisAnzeige.textContent = upgradePreis;
 
-    // Upgrade nur erlauben, wenn genug Münzen da sind
+    // Maschinen anzeigen
+    maschinenAnzeige.textContent = maschinenAnzahl;
+
+    produktionAnzeige.textContent = maschinenAnzahl;
+
+    maschinenPreisAnzeige.textContent = maschinenPreis;
+
+    // Buttons nur bei genug Münzen aktivieren
     upgradeButton.disabled = punkte < upgradePreis;
+
+    maschineKaufenButton.disabled =
+        punkte < maschinenPreis;
 }
 
 
-// Wenn der Spieler Münzen sammelt
+// ==================================
+// 4. MÜNZEN DURCH KLICKEN SAMMELN
+// ==================================
+
 sammelnButton.addEventListener("click", function() {
 
     punkte = punkte + muenzenProKlick;
@@ -41,28 +85,67 @@ sammelnButton.addEventListener("click", function() {
 });
 
 
-// Wenn der Spieler ein Upgrade kaufen möchte
+// ==================================
+// 5. KLICK-UPGRADES KAUFEN
+// ==================================
+
 upgradeButton.addEventListener("click", function() {
 
-    // Hat der Spieler genug Münzen?
     if (punkte >= upgradePreis) {
 
-        // Münzen für das Upgrade abziehen
         punkte = punkte - upgradePreis;
 
-        // Pro Klick gibt es jetzt 5 Münzen mehr
         muenzenProKlick = muenzenProKlick + 5;
 
-        // Das nächste Upgrade wird teurer
         upgradePreis = upgradePreis + 20;
 
-        // Anzeigen aktualisieren
         anzeigeAktualisieren();
-
     }
 
 });
 
 
-// Beim Start alle Werte anzeigen
+// ==================================
+// 6. MÜNZMASCHINEN KAUFEN
+// ==================================
+
+maschineKaufenButton.addEventListener("click", function() {
+
+    if (punkte >= maschinenPreis) {
+
+        // Preis bezahlen
+        punkte = punkte - maschinenPreis;
+
+        // Eine neue Maschine hinzufügen
+        maschinenAnzahl = maschinenAnzahl + 1;
+
+        // Nächste Maschine wird teurer
+        maschinenPreis = maschinenPreis + 25;
+
+        // Anzeigen aktualisieren
+        anzeigeAktualisieren();
+    }
+
+});
+
+
+// ==================================
+// 7. AUTOMATISCHE PRODUKTION
+// ==================================
+
+setInterval(function() {
+
+    // Jede Maschine produziert 1 Münze pro Sekunde
+    punkte = punkte + maschinenAnzahl;
+
+    // Neuen Münzstand anzeigen
+    anzeigeAktualisieren();
+
+}, 1000);
+
+
+// ==================================
+// 8. SPIEL STARTEN
+// ==================================
+
 anzeigeAktualisieren();
