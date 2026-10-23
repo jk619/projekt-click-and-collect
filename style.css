@@ -78,3 +78,33 @@ button:disabled {
 .maschine p {
     margin: 15px 0;
 }
+
+/* ==================================
+   SPIELSTAND-SPEICHERUNG
+================================== */
+
+.speicher {
+    background-color: #1b2840;
+    margin-top: 25px;
+    padding: 20px;
+    border-radius: 15px;
+}
+
+.speicher h3 {
+    color: gold;
+    font-size: 22px;
+}
+
+#spiel-speichern {
+    background-color: #198754;
+}
+
+#spiel-speichern:hover {
+    background-color: #146c43;
+}
+
+#speicher-status {
+    color: #b8d8c9;
+    font-size: 13px;
+    margin-top: 15px;
+}
