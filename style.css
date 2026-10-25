@@ -121,3 +121,79 @@ button:disabled {
     line-height: 1.5;
 }
 
+
+/* ==================================
+   WILLKOMMEN-ZURÜCK-FENSTER
+================================== */
+
+/* Dunkler Hintergrund hinter dem Fenster */
+.offline-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 20px;
+    box-sizing: border-box;
+    z-index: 1000;
+}
+
+/* Fenster ausblenden, wenn hidden aktiv ist */
+.offline-modal[hidden] {
+    display: none;
+}
+
+/* Das eigentliche Pop-up */
+.offline-fenster {
+    background-color: #263650;
+    color: white;
+
+    max-width: 400px;
+    width: 100%;
+
+    padding: 30px 20px;
+    border-radius: 20px;
+    box-sizing: border-box;
+
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Überschrift */
+.offline-fenster h2 {
+    color: gold;
+    font-size: 28px;
+}
+
+/* Offline-Zeit */
+#offline-zeit {
+    font-size: 24px;
+    color: white;
+}
+
+/* Anzeige der verdienten Münzen */
+.offline-bonus {
+    background-color: #1b2840;
+    color: gold;
+
+    font-size: 36px;
+    font-weight: bold;
+
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 15px;
+}
+
+/* Münzen einsammeln */
+#offline-einsammeln {
+    background-color: #198754;
+    width: 100%;
+}
+
+#offline-einsammeln:hover {
+    background-color: #146c43;
+}
+
