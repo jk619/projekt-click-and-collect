@@ -10,8 +10,14 @@ let upgradePreis = 20;
 let maschinenAnzahl = 0;
 let maschinenPreis = 50;
 
-// Name unseres gespeicherten Spielstands
+// Wir verwenden unseren bisherigen Spielstand weiter
 const SPEICHER_NAME = "click-and-collect-spielstand-v1";
+
+// Maximal 24 Stunden Offline-Produktion
+const MAX_OFFLINE_SEKUNDEN = 24 * 60 * 60;
+
+// Zeitpunkt der letzten berechneten Produktion
+let letzterProduktionsZeitpunkt = Date.now();
 
 
 // ==================================
@@ -37,12 +43,15 @@ const maschinenPreisAnzeige =
 const maschineKaufenButton =
     document.getElementById("maschine-kaufen");
 
-// Neue Elemente für die Speicherung
 const speichernButton =
     document.getElementById("spiel-speichern");
 
 const speicherStatus =
     document.getElementById("speicher-status");
+
+// NEU: Anzeige für den Offline-Bonus
+const offlineInfo =
+    document.getElementById("offline-info");
 
 
 // ==================================
@@ -52,18 +61,13 @@ const speicherStatus =
 function anzeigeAktualisieren() {
 
     anzeige.textContent = punkte;
-
     klickWertAnzeige.textContent = muenzenProKlick;
-
     preisAnzeige.textContent = upgradePreis;
 
     maschinenAnzeige.textContent = maschinenAnzahl;
-
     produktionAnzeige.textContent = maschinenAnzahl;
-
     maschinenPreisAnzeige.textContent = maschinenPreis;
 
-    // Kaufbuttons nur bei genügend Münzen aktivieren
     upgradeButton.disabled = punkte < upgradePreis;
 
     maschineKaufenButton.disabled =
@@ -72,43 +76,76 @@ function anzeigeAktualisieren() {
 
 
 // ==================================
-// 4. SPIELSTAND SPEICHERN
+// 4. PRODUKTION NACH ZEIT BERECHNEN
+// ==================================
+
+function produktionBerechnen() {
+
+    const jetzt = Date.now();
+
+    // Wie viele volle Sekunden sind vergangen?
+    const vergangeneSekunden = Math.floor(
+        (jetzt - letzterProduktionsZeitpunkt) / 1000
+    );
+
+    if (vergangeneSekunden <= 0) {
+
+        // Falls die Systemuhr zurückgestellt wurde
+        if (jetzt < letzterProduktionsZeitpunkt) {
+            letzterProduktionsZeitpunkt = jetzt;
+        }
+
+        return;
+    }
+
+    // Maschinen produzieren für die vergangene Zeit
+    punkte = punkte +
+        vergangeneSekunden * maschinenAnzahl;
+
+    // Zeitpunkt der letzten Produktion aktualisieren
+    letzterProduktionsZeitpunkt +=
+        vergangeneSekunden * 1000;
+
+    anzeigeAktualisieren();
+}
+
+
+// ==================================
+// 5. SPIELSTAND SPEICHERN
 // ==================================
 
 function spielSpeichern(art) {
 
-    // Alle wichtigen Werte zusammenfassen
+    // Zuerst noch ausstehende Münzen berechnen
+    produktionBerechnen();
+
     const spielstand = {
         punkte: punkte,
         muenzenProKlick: muenzenProKlick,
         upgradePreis: upgradePreis,
         maschinenAnzahl: maschinenAnzahl,
-        maschinenPreis: maschinenPreis
+        maschinenPreis: maschinenPreis,
+
+        // NEU: Produktionszeitpunkt speichern
+        letzterProduktionsZeitpunkt:
+            letzterProduktionsZeitpunkt
     };
 
     try {
 
-        // Spielstand im Browser speichern
         localStorage.setItem(
             SPEICHER_NAME,
             JSON.stringify(spielstand)
         );
 
-        // Aktuelle Uhrzeit ermitteln
-        const uhrzeit = new Date().toLocaleTimeString("de-DE");
+        const uhrzeit =
+            new Date().toLocaleTimeString("de-DE");
 
-        // Rückmeldung anzeigen
-        if (art === "manuell") {
-
-            speicherStatus.textContent =
-                "✅ Manuell gespeichert um " + uhrzeit;
-
-        } else {
-
-            speicherStatus.textContent =
-                "✅ Automatisch gespeichert um " + uhrzeit;
-
-        }
+        speicherStatus.textContent =
+            (art === "manuell"
+                ? "💾 Manuell"
+                : "✅ Automatisch") +
+            " gespeichert um " + uhrzeit;
 
     } catch (fehler) {
 
@@ -121,18 +158,16 @@ function spielSpeichern(art) {
 
 
 // ==================================
-// 5. SPIELSTAND LADEN
+// 6. SPIELSTAND LADEN + OFFLINE-BONUS
 // ==================================
 
 function spielLaden() {
 
     try {
 
-        // Nach einem gespeicherten Spielstand suchen
         const gespeichert =
             localStorage.getItem(SPEICHER_NAME);
 
-        // Wenn noch kein Spielstand existiert
         if (gespeichert === null) {
 
             speicherStatus.textContent =
@@ -141,12 +176,10 @@ function spielLaden() {
             return;
         }
 
-        // Gespeicherte Daten zurückverwandeln
         const daten = JSON.parse(gespeichert);
 
-        // Prüfen, ob die Daten gültig sind
-        const gueltig =
-            daten &&
+        // Prüfen, ob der Spielstand gültig ist
+        const gueltig = daten &&
             Number.isSafeInteger(daten.punkte) &&
             daten.punkte >= 0 &&
             Number.isSafeInteger(daten.muenzenProKlick) &&
@@ -159,24 +192,91 @@ function spielLaden() {
             daten.maschinenPreis >= 1;
 
         if (!gueltig) {
+
             speicherStatus.textContent =
                 "⚠️ Spielstand ist ungültig.";
+
             return;
         }
 
-        // Alle gespeicherten Werte wiederherstellen
+        // Bisherigen Spielstand wiederherstellen
         punkte = daten.punkte;
-
         muenzenProKlick = daten.muenzenProKlick;
-
         upgradePreis = daten.upgradePreis;
-
         maschinenAnzahl = daten.maschinenAnzahl;
-
         maschinenPreis = daten.maschinenPreis;
 
+        // ==================================
+        // NEU: OFFLINE-FORTSCHRITT
+        // ==================================
+
+        const jetzt = Date.now();
+
+        let offlineBonus = 0;
+
+        // Nur berechnen, wenn ein gültiger
+        // Produktionszeitpunkt gespeichert wurde
+        if (
+            Number.isSafeInteger(
+                daten.letzterProduktionsZeitpunkt
+            ) &&
+            daten.letzterProduktionsZeitpunkt > 0 &&
+            daten.letzterProduktionsZeitpunkt <= jetzt
+        ) {
+
+            // Sekunden seit der letzten Produktion
+            const verstricheneSekunden = Math.floor(
+                (jetzt -
+                daten.letzterProduktionsZeitpunkt) / 1000
+            );
+
+            // Maximal 24 Stunden anrechnen
+            const angerechneteSekunden = Math.min(
+                verstricheneSekunden,
+                MAX_OFFLINE_SEKUNDEN
+            );
+
+            // Offline-Münzen berechnen
+            offlineBonus =
+                angerechneteSekunden * maschinenAnzahl;
+
+            // Bonus zum Münzstand hinzufügen
+            punkte = punkte + offlineBonus;
+
+            // Meldung für den Spieler erstellen
+            if (offlineBonus > 0) {
+
+                const dauer =
+                    angerechneteSekunden >= 60
+                        ? Math.floor(
+                            angerechneteSekunden / 60
+                          ) + " Minuten"
+                        : angerechneteSekunden +
+                          " Sekunden";
+
+                offlineInfo.textContent =
+                    "🌙 Willkommen zurück! Deine " +
+                    maschinenAnzahl +
+                    " Maschinen haben in " +
+                    dauer +
+                    " insgesamt " +
+                    offlineBonus.toLocaleString("de-DE") +
+                    " Münzen produziert!";
+            }
+        }
+
+        // Ab jetzt läuft die neue Spielzeit
+        letzterProduktionsZeitpunkt = jetzt;
+
         speicherStatus.textContent =
-            "✅ Spielstand erfolgreich geladen!";
+            "✅ Spielstand geladen.";
+
+        // Offline-Bonus direkt sichern.
+        // So kann er nicht doppelt vergeben werden.
+        if (offlineBonus > 0) {
+
+            spielSpeichern("automatisch");
+        }
 
     } catch (fehler) {
 
@@ -189,26 +289,28 @@ function spielLaden() {
 
 
 // ==================================
-// 6. MÜNZEN SAMMELN
+// 7. MÜNZEN DURCH KLICKEN SAMMELN
 // ==================================
 
 sammelnButton.addEventListener("click", function() {
+
+    produktionBerechnen();
 
     punkte = punkte + muenzenProKlick;
 
     anzeigeAktualisieren();
 
-    // Nach dem Klick automatisch speichern
     spielSpeichern("automatisch");
-
 });
 
 
 // ==================================
-// 7. KLICK-UPGRADES KAUFEN
+// 8. KLICK-UPGRADES KAUFEN
 // ==================================
 
 upgradeButton.addEventListener("click", function() {
+
+    produktionBerechnen();
 
     if (punkte >= upgradePreis) {
 
@@ -220,18 +322,18 @@ upgradeButton.addEventListener("click", function() {
 
         anzeigeAktualisieren();
 
-        // Nach dem Kauf automatisch speichern
         spielSpeichern("automatisch");
     }
-
 });
 
 
 // ==================================
-// 8. MÜNZMASCHINEN KAUFEN
+// 9. MÜNZMASCHINEN KAUFEN
 // ==================================
 
 maschineKaufenButton.addEventListener("click", function() {
+
+    produktionBerechnen();
 
     if (punkte >= maschinenPreis) {
 
@@ -243,34 +345,34 @@ maschineKaufenButton.addEventListener("click", function() {
 
         anzeigeAktualisieren();
 
-        // Nach dem Kauf automatisch speichern
         spielSpeichern("automatisch");
     }
-
 });
 
 
 // ==================================
-// 9. AUTOMATISCHE MÜNZPRODUKTION
+// 10. MANUELL SPEICHERN
 // ==================================
 
-setInterval(function() {
+speichernButton.addEventListener("click", function() {
 
-    if (maschinenAnzahl > 0) {
-
-        punkte = punkte + maschinenAnzahl;
-
-        anzeigeAktualisieren();
-    }
-
-}, 1000);
+    spielSpeichern("manuell");
+});
 
 
 // ==================================
-// 10. AUTOMATISCHES SPEICHERN
+// 11. AUTOMATISCHE PRODUKTION
 // ==================================
 
-// Zusätzlich alle 10 Sekunden speichern
+// Etwa jede Sekunde Produktion berechnen
+setInterval(produktionBerechnen, 1000);
+
+
+// ==================================
+// 12. AUTOMATISCHES SPEICHERN
+// ==================================
+
+// Alle 10 Sekunden speichern
 setInterval(function() {
 
     spielSpeichern("automatisch");
@@ -279,18 +381,7 @@ setInterval(function() {
 
 
 // ==================================
-// 11. MANUELLES SPEICHERN
-// ==================================
-
-speichernButton.addEventListener("click", function() {
-
-    spielSpeichern("manuell");
-
-});
-
-
-// ==================================
-// 12. BEIM VERLASSEN SPEICHERN
+// 13. BEIM VERLASSEN SPEICHERN
 // ==================================
 
 window.addEventListener("pagehide", function() {
@@ -301,11 +392,9 @@ window.addEventListener("pagehide", function() {
 
 
 // ==================================
-// 13. SPIEL STARTEN
+// 14. SPIEL STARTEN
 // ==================================
 
-// Vorhandenen Spielstand laden
 spielLaden();
 
-// Aktuellen Spielstand anzeigen
 anzeigeAktualisieren();
