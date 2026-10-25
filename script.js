@@ -66,7 +66,18 @@ const offlineBonusAnzeige =
 
 const offlineEinsammelnButton =
     document.getElementById("offline-einsammeln");
+// ==================================
+// NEU: BACKUP-ELEMENTE FINDEN
+// ==================================
 
+const exportierenButton =
+    document.getElementById("spiel-exportieren");
+
+const importierenButton =
+    document.getElementById("spiel-importieren");
+
+const importDateiInput =
+    document.getElementById("spiel-datei");
 
 // ==================================
 // 3. SPIELANZEIGE AKTUALISIEREN
@@ -502,6 +513,281 @@ window.addEventListener("pagehide", function() {
     spielSpeichern("automatisch");
 });
 
+
+// ==================================
+// SPIELSTAND EXPORTIEREN
+// ==================================
+
+exportierenButton.addEventListener("click", function() {
+
+    try {
+
+        // Aktuelle Maschinenproduktion berücksichtigen
+        produktionBerechnen();
+
+        // Alle wichtigen Spielwerte sammeln
+        const backup = {
+
+            format: "click-and-collect",
+            version: 1,
+            exportiertAm: new Date().toISOString(),
+
+            spielstand: {
+
+                punkte: punkte,
+
+                muenzenProKlick: muenzenProKlick,
+
+                upgradePreis: upgradePreis,
+
+                maschinenAnzahl: maschinenAnzahl,
+
+                maschinenPreis: maschinenPreis,
+
+                letzterProduktionsZeitpunkt:
+                    letzterProduktionsZeitpunkt,
+
+                ausstehenderOfflineBonus:
+                    ausstehenderOfflineBonus,
+
+                ausstehendeOfflineSekunden:
+                    ausstehendeOfflineSekunden
+            }
+        };
+
+        // JavaScript-Daten in JSON-Text verwandeln
+        const jsonText = JSON.stringify(backup, null, 2);
+
+        // Daraus eine herunterladbare Datei erstellen
+        const datei = new Blob(
+            [jsonText],
+            { type: "application/json" }
+        );
+
+        // Temporäre Download-Adresse erstellen
+        const downloadUrl = URL.createObjectURL(datei);
+
+        // Unsichtbaren Download-Link erstellen
+        const link = document.createElement("a");
+
+        link.href = downloadUrl;
+
+        // Dateiname mit aktuellem Datum
+        const datum = new Date().toISOString().slice(0, 10);
+
+        link.download =
+            "click-and-collect-backup-" + datum + ".json";
+
+        // Download starten
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        // Temporäre Adresse wieder freigeben
+        setTimeout(function() {
+            URL.revokeObjectURL(downloadUrl);
+        }, 1000);
+
+        speicherStatus.textContent =
+            "💾 Backup-Download gestartet!";
+
+    } catch (fehler) {
+
+        speicherStatus.textContent =
+            "⚠️ Export fehlgeschlagen!";
+
+        console.error("Exportfehler:", fehler);
+    }
+});
+
+
+// ==================================
+// BACKUP-DATEN ÜBERPRÜFEN
+// ==================================
+
+function istGueltigerBackupSpielstand(daten) {
+
+    if (!daten || typeof daten !== "object") {
+        return false;
+    }
+
+    // Hilfsfunktion für gültige ganze Zahlen
+    function gueltigeZahl(wert, minimum) {
+        return Number.isSafeInteger(wert) &&
+               wert >= minimum;
+    }
+
+    return (
+        gueltigeZahl(daten.punkte, 0) &&
+
+        gueltigeZahl(daten.muenzenProKlick, 5) &&
+
+        gueltigeZahl(daten.upgradePreis, 1) &&
+
+        gueltigeZahl(daten.maschinenAnzahl, 0) &&
+
+        gueltigeZahl(daten.maschinenPreis, 1) &&
+
+        gueltigeZahl(daten.ausstehenderOfflineBonus, 0) &&
+
+        gueltigeZahl(daten.ausstehendeOfflineSekunden, 0) &&
+
+        // Verhindert zu große Zahlen beim Einsammeln
+        daten.ausstehenderOfflineBonus <=
+            Number.MAX_SAFE_INTEGER - daten.punkte
+    );
+}
+
+
+// ==================================
+// SPIELSTAND IMPORTIEREN
+// ==================================
+
+// Klick auf Import öffnet den Datei-Explorer
+importierenButton.addEventListener("click", function() {
+
+    importDateiInput.click();
+
+});
+
+
+// Sobald eine Datei ausgewählt wurde
+importDateiInput.addEventListener(
+    "change",
+    async function() {
+
+        const datei = importDateiInput.files[0];
+
+        // Dateiauswahl zurücksetzen
+        importDateiInput.value = "";
+
+        if (!datei) {
+            return;
+        }
+
+        // Ungewöhnlich große Dateien ablehnen
+        if (datei.size > 100000) {
+
+            speicherStatus.textContent =
+                "⚠️ Die Backup-Datei ist zu groß.";
+
+            return;
+        }
+
+        try {
+
+            // Datei einlesen
+            const text = await datei.text();
+
+            // JSON-Text zurück in Daten verwandeln
+            const backup = JSON.parse(text);
+
+            // Prüfen, ob die Datei von unserem Spiel ist
+            if (
+                !backup ||
+                backup.format !== "click-and-collect" ||
+                backup.version !== 1 ||
+                !istGueltigerBackupSpielstand(
+                    backup.spielstand
+                )
+            ) {
+
+                throw new Error(
+                    "Ungültige oder nicht unterstützte Backup-Datei"
+                );
+            }
+
+            // Vor dem Überschreiben nachfragen
+            const bestaetigt = window.confirm(
+                "ACHTUNG!\n\n" +
+                "Dein aktueller Spielstand wird durch " +
+                "den importierten Spielstand ersetzt.\n\n" +
+                "Möchtest du wirklich fortfahren?"
+            );
+
+            if (!bestaetigt) {
+                return;
+            }
+
+            const daten = backup.spielstand;
+
+            // Die aktuelle Zeit verwenden.
+            // Dadurch entsteht kein doppelter
+            // Offline-Verdienst seit dem Export.
+            const jetzt = Date.now();
+
+            const neuerSpielstand = {
+
+                punkte: daten.punkte,
+
+                muenzenProKlick: daten.muenzenProKlick,
+
+                upgradePreis: daten.upgradePreis,
+
+                maschinenAnzahl: daten.maschinenAnzahl,
+
+                maschinenPreis: daten.maschinenPreis,
+
+                letzterProduktionsZeitpunkt: jetzt,
+
+                ausstehenderOfflineBonus:
+                    daten.ausstehenderOfflineBonus,
+
+                ausstehendeOfflineSekunden:
+                    daten.ausstehendeOfflineSekunden
+            };
+
+            // Zuerst sicher im Browser speichern
+            localStorage.setItem(
+                SPEICHER_NAME,
+                JSON.stringify(neuerSpielstand)
+            );
+
+            // Danach die laufenden Spielwerte ersetzen
+            punkte = neuerSpielstand.punkte;
+
+            muenzenProKlick =
+                neuerSpielstand.muenzenProKlick;
+
+            upgradePreis = neuerSpielstand.upgradePreis;
+
+            maschinenAnzahl =
+                neuerSpielstand.maschinenAnzahl;
+
+            maschinenPreis =
+                neuerSpielstand.maschinenPreis;
+
+            letzterProduktionsZeitpunkt = jetzt;
+
+            ausstehenderOfflineBonus =
+                neuerSpielstand.ausstehenderOfflineBonus;
+
+            ausstehendeOfflineSekunden =
+                neuerSpielstand.ausstehendeOfflineSekunden;
+
+            // Spielanzeige aktualisieren
+            anzeigeAktualisieren();
+
+            // Willkommensfenster zurücksetzen
+            offlineModal.hidden = true;
+
+            // Falls ein offener Offline-Bonus existiert,
+            // wird das Einsammelfenster angezeigt
+            offlineFensterAnzeigen();
+
+            speicherStatus.textContent =
+                "✅ Spielstand erfolgreich importiert!";
+
+        } catch (fehler) {
+
+            speicherStatus.textContent =
+                "⚠️ Import fehlgeschlagen! " +
+                "Bitte überprüfe die Datei.";
+
+            console.error("Importfehler:", fehler);
+        }
+    }
+);
 
 // ==================================
 // 17. SPIEL STARTEN

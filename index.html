@@ -79,7 +79,26 @@
             <p id="offline-info" aria-live="polite">
             
             </p>
+        <!-- Spielstand exportieren und importieren -->
+        <div class="datei-aktionen">
 
+            <button id="spiel-exportieren" type="button">
+                📤 Spielstand exportieren
+            </button>
+
+            <button id="spiel-importieren" type="button">
+                📥 Spielstand importieren
+            </button>
+
+            <input
+                type="file"
+                id="spiel-datei"
+                accept=".json,application/json"
+                hidden
+            >
+
+        </div>
+        
         </div>
 
     </div>

@@ -197,3 +197,39 @@ button:disabled {
     background-color: #146c43;
 }
 
+
+/* ==================================
+   SPIELSTAND EXPORT / IMPORT
+================================== */
+
+.datei-aktionen {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+/* Beide Buttons */
+.datei-aktionen button {
+    width: 100%;
+    padding: 14px;
+    font-size: 15px;
+}
+
+/* Export-Button */
+#spiel-exportieren {
+    background-color: #198754;
+}
+
+#spiel-exportieren:hover {
+    background-color: #146c43;
+}
+
+/* Import-Button */
+#spiel-importieren {
+    background-color: #3278f6;
+}
+
+#spiel-importieren:hover {
+    background-color: #1955c4;
+}
